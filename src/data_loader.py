@@ -72,7 +72,7 @@ def load_lcfs_data(years=None) -> pd.DataFrame:
 
     Since each survey year may have slightly different columns (variables added
     or removed between waves), we only keep the intersection of columns that
-    exist in ALL years — ensuring a consistent feature space.
+    exist in ALL years, ensuring a consistent feature space.
 
     Parameters
     ----------
@@ -117,7 +117,7 @@ def compute_oecd_scale(df: pd.DataFrame) -> pd.Series:
     across households of different compositions:
         Scale = 1 + 0.5 * (additional adults) + 0.3 * (children under 14)
 
-    A single-adult household has scale = 1.0 (the reference point).
+    A single adult household has scale = 1.0 (the reference point).
     A couple with 2 children has scale = 1 + 0.5 + 0.3*2 = 2.1.
 
     Uses:
@@ -159,60 +159,142 @@ def compute_equivalised_income(df: pd.DataFrame) -> pd.Series:
 
 
 # ── Feature group definitions ───────────────────────────────────────────────
-# These lists define which columns in the LCFS data are used as features
-# for the income prediction task. They are separated into expenditure
-# (continuous) and demographic (mixed type) groups.
+# Features were selected using Pearson correlation with equivalised income
+# across all 3 survey years, after removing leakage variables and
+# de-duplicating near identical columns (r > 0.99).
+# All features below exist in the common column set across 2021-2023.
 
-# Key expenditure variables (weekly household expenditure categories, in £)
-# These represent different COICOP-style spending categories
+# Expenditure features selected by correlation with equivalised income
+# These are weekly household spending amounts (£) from COICOP categories
 EXPENDITURE_FEATURES = [
-    'p600',    # total expenditure (sum of all categories)
-    'p601',    # food & non-alcoholic drinks (alternate variable)
-    'p530',    # housing (net) — rent/mortgage after benefits
-    'p531',    # fuel, light & power (gas, electricity, etc.)
-    'p532',    # food & non-alcoholic drinks
-    'p533',    # alcoholic drinks
-    'p534',    # tobacco
-    'p535p',   # clothing & footwear
-    'p536p',   # household goods (furniture, appliances, etc.)
-    'p537',    # household services (insurance, repairs, etc.)
-    'p538',    # personal goods & services (toiletries, hairdressing)
-    'p539',    # motoring (vehicle costs, fuel, etc.)
-    'p540',    # fares & other travel (public transport, flights)
-    'p541',    # leisure goods (books, toys, sports equipment)
-    'p542',    # leisure services (holidays, eating out, subscriptions)
-    'p543',    # miscellaneous (education, charitable giving)
-    'p544',    # other items (not elsewhere classified)
+    # Aggregate expenditure totals (r > 0.30)
+    'p600',    # total expenditure (r=0.34)
+    'p550tp',  # total expenditure including housing costs (r=0.38)
+    'p531',    # fuel, light and power (r=0.43)
+    'p538',    # personal goods and services (r=0.30)
+    'p128t',   # total regular outgoings: mortgage, council tax, insurance (r=0.40)
+    'p071h',   # mortgage and rent payments (r=0.42)
+    'p153t',   # total other regular outgoing payments (r=0.30)
+    # Sub-category expenditure (r = 0.15 to 0.30)
+    'p620tp',  # clothing and footwear (r=0.27)
+    'p601',    # food and non-alcoholic drinks (r=0.25)
+    'p073hp',  # mortgage interest payments (r=0.26)
+    'p515tp',  # household goods and services (r=0.24)
+    'p611',    # alcoholic drinks and tobacco (r=0.20)
+    'p607',    # non-alcoholic drinks (r=0.22)
+    'p537',    # household services: insurance, repairs (r=0.18)
+    'p612',    # clothing sub-category (r=0.20)
+    'p516tp',  # furniture and furnishings (r=0.20)
+    'p548',    # miscellaneous goods and services (r=0.19)
+    'p545',    # recreation and culture (r=0.18)
+    'p609',    # food sub-category (r=0.15)
+    'p220p',   # council tax or rates (r=-0.18)
+    # COICOP detailed sub-categories (r > 0.15)
+    'c11711',  # catering: restaurant and cafe meals (r=0.21)
+    'cb1111',  # food: bread and cereals (r=0.18)
+    'c11731',  # catering: canteen meals (r=0.18)
+    'ctrbpcnt', # travel: public transport season tickets (r=-0.19)
+    'c11761',  # catering: other take-away food (r=0.16)
+    'c11711l', # catering: restaurant meals (alt code) (r=0.17)
+    'cb1311',  # food: fish (r=0.18)
 ]
 
-# Demographic / household composition features
-# These describe the household structure, geography, and socio-economic position
+# Demographic and household composition features
+# These describe household structure and socio-economic characteristics
 DEMOGRAPHIC_FEATURES = [
-    'a049',    # household size (total number of people)
-    'a055',    # number of adults in household
-    'a099',    # household composition type (e.g. couple, lone parent)
-    'sexhrp',  # sex of household reference person (1=male, 2=female)
-    'gorx',    # government office region (1-12, e.g. 7=London)
-    'a121',    # tenure type (1=owned outright, 2=mortgage, 3=rented, etc.)
-    'a116',    # age of HRP — grouped into bands
-    'a103',    # economic position of HRP (employed, retired, etc.)
+    # High correlation demographics (|r| > 0.30)
+    'a055',    # number of adults in household (r=-0.54)
+    'a099',    # household composition type: couple, lone parent, etc. (r=-0.52)
+    'a054',    # number of earners in household (r=0.41)
+    'a056',    # number of persons with income (r=0.40)
+    'a069p',   # household composition (3 categories) (r=0.31)
+    'a091',    # socio-economic classification of HRP (r=-0.36)
+    'a094',    # government office region (r=-0.34)
+    'a093',    # socio-economic group of HRP (r=-0.32)
+    # Moderate correlation demographics (|r| = 0.15 to 0.30)
+    'a160',    # number of rooms (r=0.29)
+    'g018',    # number of adults (alternative code) (r=0.29)
+    'a124',    # number of adults in employment (r=0.28)
+    'a143p',   # number of cars or vans owned (r=0.28)
+    'a149',    # central heating type (r=0.27)
+    'a062',    # age of HRP, banded 1-30 (r=0.28)
+    'a184',    # dependent children indicator (r=0.24)
+    'a049',    # household size, total persons (r=0.24)
+    'a044',    # number of dependent children under 16 (r=0.19)
+    'a043',    # number of children in household (r=0.21)
+    'a024',    # number of persons aged 65+ (r=0.17)
+    'a023',    # number of full time workers (r=0.18)
+    'a1646p',  # internet access indicator (r=0.17)
+    'a065p',   # employment status of HRP (r=-0.18)
+    'a1661',   # council tax band (r=-0.17)
+    # Standard demographic controls (low correlation but important context)
+    'sexhrp',  # sex of household reference person (r=-0.11)
+    'a121',    # tenure type: own, mortgage, rent (r=0.07)
 ]
 
-# Variables to EXCLUDE from features (income-derived — would cause target leakage)
-# Including any of these would give the model direct or indirect access to the
-# target variable (equivalised income), making predictions artificially accurate
-# but useless for real-world deployment where income is unknown.
+# ── Leakage variable exclusion ──────────────────────────────────────────────
+# Variables to EXCLUDE from features because they are derived from income
+# or encode income information directly or indirectly.
+#
+# Including any of these would give the model access to the target variable,
+# making predictions artificially accurate but useless for real world
+# deployment where income is unknown.
+#
+# Categories of leakage:
+# 1. Income variables (anon_income and aggregates in p300-p399)
+# 2. Tax and deductions (p400-p499, directly calculated from income)
+# 3. Pre-computed equivalised income (eqincdmp, eqincdop)
+# 4. Income quantile groupings (a060)
+# 5. Means-tested benefits (all b-codes, amounts determined by income)
+# 6. Payroll deductions and welfare linked variables
+# 7. Survey weights and OECD scale (not predictors)
+
 LEAKAGE_VARIABLES = [
-    'anon_income',          # raw income (used to derive the target)
+    # Direct income variables
+    'anon_income',          # raw anonymised household income (target source)
     'equivalised_income',   # target variable itself (anon_income / oecd_scale)
-    'oecd_scale',           # equivalence scale (derived from household composition)
-    'p630p',                # equivalised expenditure (income-adjusted)
+    # Income aggregates (p300-p399 range is the income section of LCFS)
+    'p344p',                # gross household income (r=0.999 with anon_income)
+    'p352p',                # income sub-total (r=0.986)
+    'p389p',                # income sub-total (r=0.983)
+    'p431p',                # income tax paid (r=0.954)
+    'p392p',                # income aggregate (r=0.853)
+    'p356p',                # income aggregate (r=0.844)
+    'p300p',                # income aggregate (r=0.843)
+    'p390p',                # income sub-total (r=0.801)
+    'p388p',                # income sub-total (r=0.793)
+    'p348',                 # income component (r=-0.302)
+    # Tax and deductions (calculated from income)
+    'p493p',                # national insurance and tax total (r=0.537)
+    'p425',                 # tax band code (r=-0.510)
+    # Pre-computed equivalised income from ONS
+    'eqincdmp',             # equivalised income, modified OECD (r=0.828)
+    'eqincdop',             # equivalised income, original OECD (r=0.844)
+    # Income quantile grouping
+    'a060',                 # income quantile band (Spearman r=0.97 with income)
+    # Equivalised expenditure (income adjusted)
+    'p630p',                # equivalised expenditure
     'p630cp',               # equivalised expenditure (children)
     'p630tp',               # equivalised expenditure (total)
-    'eqincdmp',             # equivalised income (modified OECD) — pre-computed by ONS
-    'eqincdop',             # equivalised income (OECD original) — pre-computed by ONS
-    'weighta',              # survey weight (not a predictor, affects sampling)
+    # Payroll and welfare linked
+    'p281p',                # pension contributions deducted from pay (r=0.387)
+    'p206p',                # rent rebate or council tax reduction (income tested)
+    # OECD equivalence scale (used to compute target)
+    'oecd_scale',           # derived scale column
+    'oecd',                 # raw OECD scale from dataset
+    # Survey weights (not predictors)
+    'weighta',              # survey weight
+    'weightq',              # quarterly weight
+    'non_response_weight',  # non-response adjustment weight
+    # Survey metadata
+    'survey_year',          # year indicator (not a household characteristic)
 ]
+
+# All b-codes (means-tested benefits) are excluded as a category.
+# UK benefits like Universal Credit, Housing Benefit, and Income Support
+# are income-tested: their amounts directly encode the household's income
+# level, constituting indirect target leakage.
+LEAKAGE_PREFIXES = ['b']
 
 
 def get_feature_columns(df: pd.DataFrame) -> list:
@@ -222,7 +304,7 @@ def get_feature_columns(df: pd.DataFrame) -> list:
 
     This function serves as a safety gate: it only returns columns that are
     both (a) in our pre-defined feature lists and (b) NOT in the leakage
-    exclusion list. This prevents accidental inclusion of income-derived
+    exclusion list. This prevents accidental inclusion of income derived
     variables that would invalidate the predictive task.
     """
     # Combine expenditure and demographic feature lists
@@ -236,5 +318,12 @@ def get_feature_columns(df: pd.DataFrame) -> list:
     leakage = set(c.lower() for c in LEAKAGE_VARIABLES)
 
     # Exclude any feature that appears in the leakage list
-    safe = [c for c in available if c.lower() not in leakage]
+    # Also exclude any feature whose prefix matches a leakage prefix (e.g. b-codes)
+    safe = []
+    for c in available:
+        if c.lower() in leakage:
+            continue
+        if any(c.lower().startswith(prefix) for prefix in LEAKAGE_PREFIXES):
+            continue
+        safe.append(c)
     return safe

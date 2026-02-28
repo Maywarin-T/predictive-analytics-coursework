@@ -46,17 +46,76 @@ class CoerceNumeric(BaseEstimator, TransformerMixin):
 # These lists define which features should receive categorical vs continuous
 # preprocessing. Categorical features are one-hot encoded; continuous features
 # are scaled to zero mean and unit variance.
+#
+# Classification rule: columns with <= 20 unique values are treated as
+# categorical (discrete groups), all others as continuous (numeric scale).
 
-# Categorical features — treated as discrete groups, one-hot encoded
-CATEGORICAL_FEATURES = ['gorx', 'sexhrp', 'a121', 'a099', 'a103']
+# Categorical features (<=20 unique values) — one-hot encoded
+CATEGORICAL_FEATURES = [
+    # Demographic (high correlation)
+    'a055',    # number of adults (12 unique values)
+    'a099',    # household composition type (4 values)
+    'a054',    # number of earners (7 values)
+    'a056',    # number of persons with income (7 values)
+    'a069p',   # household composition, 3 categories
+    'a091',    # socio-economic classification of HRP (17 values)
+    'a094',    # government office region (12 values)
+    'a093',    # socio-economic group of HRP (7 values)
+    # Demographic (moderate correlation)
+    'a160',    # number of rooms (8 values)
+    'g018',    # number of adults, alt code (7 values)
+    'a124',    # number of adults in employment (8 values)
+    'a143p',   # number of cars or vans (4 values)
+    'a149',    # central heating type (8 values)
+    'a184',    # dependent children indicator (4 values)
+    'a049',    # household size (9 values)
+    'a044',    # dependent children under 16 (3 values)
+    'a043',    # number of children (6 values)
+    'a024',    # persons aged 65+ (3 values)
+    'a023',    # full time workers (4 values)
+    'a1646p',  # internet access (2 values)
+    'a065p',   # employment status of HRP (14 values)
+    'a1661',   # council tax band (2 values)
+    # Standard demographic controls
+    'sexhrp',  # sex of HRP (2 values)
+    'a121',    # tenure type (8 values)
+]
 
-# Continuous features — treated as numeric values, standardised
-# Includes all expenditure categories (p-codes) plus numeric demographics
+# Continuous features (>20 unique values) — standardised
+# All expenditure variables plus age of HRP
 CONTINUOUS_FEATURES = [
-    'p600', 'p530', 'p531', 'p532', 'p533', 'p534',
-    'p535p', 'p536p', 'p537', 'p538', 'p539', 'p540',
-    'p541', 'p542', 'p543', 'p544',
-    'a049', 'a055', 'a116',  # household size, num adults, age of HRP
+    # Expenditure aggregates
+    'p600',    # total expenditure
+    'p550tp',  # total expenditure including housing
+    'p531',    # fuel, light and power
+    'p538',    # personal goods and services
+    'p128t',   # regular outgoings total
+    'p071h',   # mortgage and rent
+    'p153t',   # other regular payments
+    # Expenditure sub-categories
+    'p620tp',  # clothing and footwear
+    'p601',    # food and non-alcoholic drinks
+    'p073hp',  # mortgage interest
+    'p515tp',  # household goods and services
+    'p611',    # alcoholic drinks and tobacco
+    'p607',    # non-alcoholic drinks
+    'p537',    # household services
+    'p612',    # clothing sub-category
+    'p516tp',  # furniture and furnishings
+    'p548',    # miscellaneous goods
+    'p545',    # recreation and culture
+    'p609',    # food sub-category
+    'p220p',   # council tax or rates
+    # COICOP detailed sub-categories
+    'c11711',  # restaurant and cafe meals
+    'cb1111',  # bread and cereals
+    'c11731',  # canteen meals
+    'ctrbpcnt', # public transport season tickets
+    'c11761',  # other take-away food
+    'c11711l', # restaurant meals (alt code)
+    'cb1311',  # fish
+    # Demographic (continuous)
+    'a062',    # age of HRP, banded 1-30
 ]
 
 
