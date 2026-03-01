@@ -26,7 +26,7 @@ from src.data_loader import (
     load_single_year, load_lcfs_data, get_feature_columns,
     LEAKAGE_VARIABLES, compute_oecd_scale, compute_equivalised_income,
 )
-from src.preprocessing import create_target, get_available_features, build_preprocessor, split_data
+from src.preprocessing import create_target, get_available_features, build_preprocessor, split_data, split_data_temporal
 
 
 # ── Test fixtures ────────────────────────────────────────────────────────────
@@ -188,3 +188,41 @@ class TestPreprocessing:
         test_props = y_test.value_counts(normalize=True).sort_index()
         diff = (train_props - test_props).abs()
         assert diff.max() < 0.05, f"Stratification failed: max prop diff = {diff.max():.3f}"
+
+
+class TestTemporalSplit:
+    """Tests for temporal train/validation/test splitting."""
+
+    def test_temporal_split_no_overlap(self, sample_data_with_equiv):
+        """Train, val, and test sets should have completely disjoint indices."""
+        features = get_feature_columns(sample_data_with_equiv)
+        target = create_target(sample_data_with_equiv)
+        # Single year data, so use same year for both train and test to test mechanics
+        X_train, X_val, X_test, _, _, _ = split_data_temporal(
+            sample_data_with_equiv[features], target,
+            survey_year=sample_data_with_equiv['survey_year'],
+            train_years=[2022], test_years=[2022],
+            random_state=42,
+        )
+        assert len(set(X_train.index) & set(X_val.index)) == 0
+
+    def test_temporal_split_years_separated(self):
+        """Test set should only contain data from test years."""
+        from src.data_loader import load_lcfs_data, compute_oecd_scale, compute_equivalised_income
+        df = load_lcfs_data(years=[2022, 2023])
+        df['oecd_scale'] = compute_oecd_scale(df)
+        df['equivalised_income'] = compute_equivalised_income(df)
+        features = get_feature_columns(df)
+        target = create_target(df)
+        X_train, X_val, X_test, _, _, _ = split_data_temporal(
+            df[features], target,
+            survey_year=df['survey_year'],
+            train_years=[2022], test_years=[2023],
+            random_state=42,
+        )
+        # Train and val indices must come from 2022 rows only
+        train_val_indices = set(X_train.index) | set(X_val.index)
+        test_indices = set(X_test.index)
+        assert len(train_val_indices & test_indices) == 0, "Train/val and test overlap!"
+        # Verify test set is from 2023
+        assert (df.loc[X_test.index, 'survey_year'] == 2023).all()

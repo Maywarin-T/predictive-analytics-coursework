@@ -230,7 +230,7 @@ def split_data(df: pd.DataFrame, target: pd.Series,
                test_size: float = 0.15, val_size: float = 0.15,
                random_state: int = 42):
     """
-    Stratified train/validation/test split.
+    Stratified train/validation/test split (random).
 
     Performs a two-stage split to create three disjoint sets:
         1. First split: separate test set (15%) from the rest
@@ -280,6 +280,70 @@ def split_data(df: pd.DataFrame, target: pd.Series,
         random_state=random_state,
     )
 
+    print(f"Train: {X_train.shape[0]} | Val: {X_val.shape[0]} | Test: {X_test.shape[0]}")
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def split_data_temporal(df: pd.DataFrame, target: pd.Series,
+                        survey_year: pd.Series,
+                        train_years: list, test_years: list,
+                        val_size: float = 0.15,
+                        random_state: int = 42):
+    """
+    Temporal train/validation/test split to prevent future data leakage.
+
+    Uses survey year to separate data chronologically:
+        - Train + Validation: earlier years (stratified random split between them)
+        - Test: later year(s), held out entirely
+
+    This prevents the model from training on future survey data and being
+    evaluated on past data, which would inflate accuracy.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Feature dataframe (must be aligned with target and survey_year).
+    target : pd.Series
+        Target labels.
+    survey_year : pd.Series
+        Survey year for each row (used to split temporally).
+    train_years : list of int
+        Years to use for training and validation (e.g. [2021, 2022]).
+    test_years : list of int
+        Years to hold out for testing (e.g. [2023]).
+    val_size : float
+        Proportion of train_years data to use for validation (default 0.15).
+    random_state : int
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    X_train, X_val, X_test, y_train, y_val, y_test
+    """
+    # Remove rows where target is NaN
+    valid_mask = target.notna()
+    df_clean = df.loc[valid_mask].copy()
+    target_clean = target.loc[valid_mask].copy()
+    year_clean = survey_year.loc[valid_mask].copy()
+
+    # Temporal split: earlier years for train/val, later year(s) for test
+    train_val_mask = year_clean.isin(train_years)
+    test_mask = year_clean.isin(test_years)
+
+    X_train_val = df_clean.loc[train_val_mask]
+    y_train_val = target_clean.loc[train_val_mask]
+    X_test = df_clean.loc[test_mask]
+    y_test = target_clean.loc[test_mask]
+
+    # Stratified split within train years for train vs validation
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train_val, y_train_val,
+        test_size=val_size,
+        stratify=y_train_val,
+        random_state=random_state,
+    )
+
+    print(f"Temporal split: train years={train_years}, test years={test_years}")
     print(f"Train: {X_train.shape[0]} | Val: {X_val.shape[0]} | Test: {X_test.shape[0]}")
     return X_train, X_val, X_test, y_train, y_val, y_test
 
