@@ -13,8 +13,8 @@ Policy applications include proactive welfare targeting, cost-of-living monitori
 ## Project Structure
 
 ```
-├── notebooks/
-│   └── main.ipynb                 # Main analysis notebook (6 sections)
+├── MSIN0097_code_repository.ipynb # Main analysis notebook (6 sections)
+├── MSIN0097_report.pdf            # Final coursework report
 ├── src/
 │   ├── data_loader.py             # Data loading, merging, and equivalised income computation
 │   ├── preprocessing.py           # Target creation, preprocessing pipeline, splitting, PCA
@@ -24,9 +24,7 @@ Policy applications include proactive welfare targeting, cost-of-living monitori
 ├── data/                          # Raw LCFS data (not included — see Data Access below)
 ├── outputs/
 │   ├── figures/                   # Saved plots
-│   ├── figures_captioned/         # Plots with captions for the report
 │   └── models/                    # Saved model artefacts (.pkl)
-├── MSIN0097_report.pdf          # Final coursework report
 ├── requirements.txt               # Python dependencies
 └── README.md                      # This file
 ```
@@ -79,8 +77,7 @@ The raw LCFS data **cannot be redistributed** under the UK Data Service End User
 ### 5. Run the notebook
 
 ```bash
-cd notebooks
-jupyter notebook main.ipynb
+jupyter notebook MSIN0097_code_repository.ipynb
 ```
 
 Run all cells in order. All outputs (charts, tables, model results) are saved in the `.ipynb` file for review without re-running.
