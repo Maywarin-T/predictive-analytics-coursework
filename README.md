@@ -1,6 +1,6 @@
 # Predicting Household Purchasing Power from Spending Patterns
 
-MSIN0097 Predictive Analytics — Individual Coursework 2025-26
+MSIN0097 Predictive Analytics — Individual Coursework
 
 ## Overview
 
