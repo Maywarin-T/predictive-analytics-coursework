@@ -84,7 +84,7 @@ def plot_confusion_matrix(y_true, y_pred, model_name: str = "Model",
         fig.savefig(f'{FIGURE_DIR}/confusion_matrix_{model_name.lower().replace(" ", "_")}.png',
                     dpi=150, bbox_inches='tight')
     plt.show()
-    return fig
+    plt.close(fig)
 
 
 # ── Model comparison bar chart ──────────────────────────────────────────────

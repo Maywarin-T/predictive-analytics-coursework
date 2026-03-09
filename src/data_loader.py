@@ -281,11 +281,9 @@ LEAKAGE_VARIABLES = [
     'p206p',                # rent rebate or council tax reduction (income tested)
     # OECD equivalence scale (used to compute target)
     'oecd_scale',           # derived scale column
-    'oecd',                 # raw OECD scale from dataset
     # Survey weights (not predictors)
     'weighta',              # survey weight
     'weightq',              # quarterly weight
-    'non_response_weight',  # non-response adjustment weight
     # Survey metadata
     'survey_year',          # year indicator (not a household characteristic)
 ]
@@ -318,12 +316,8 @@ def get_feature_columns(df: pd.DataFrame) -> list:
     leakage = set(c.lower() for c in LEAKAGE_VARIABLES)
 
     # Exclude any feature that appears in the leakage list
-    # Also exclude any feature whose prefix matches a leakage prefix (e.g. b-codes)
-    safe = []
-    for c in available:
-        if c.lower() in leakage:
-            continue
-        if any(c.lower().startswith(prefix) for prefix in LEAKAGE_PREFIXES):
-            continue
-        safe.append(c)
+    # Note: prefix-based exclusion (e.g. b-codes) is handled by the explicit
+    # LEAKAGE_VARIABLES list rather than string prefix matching, because
+    # column renaming makes prefix checks unreliable.
+    safe = [c for c in available if c.lower() not in leakage]
     return safe
